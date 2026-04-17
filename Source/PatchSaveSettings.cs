@@ -7,8 +7,10 @@ namespace RimFridge
 {
     class PatchSaveSettings : PatchOperationPathed
     {
+#pragma warning disable 649 // Populated by RimWorld patch XML loader, not C# assignment
         protected string key;
         private XmlContainer value;
+#pragma warning restore 649
 
         protected override bool ApplyWorker(XmlDocument xml)
         {

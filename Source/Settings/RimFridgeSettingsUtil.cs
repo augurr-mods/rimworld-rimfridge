@@ -1,5 +1,6 @@
 ﻿using RimWorld;
 using System.Collections.Generic;
+using System.Reflection;
 using Verse;
 
 namespace RimFridge
@@ -8,6 +9,10 @@ namespace RimFridge
     {
         public static Dictionary<string, float> BaseEnergy { get; set; }
         public static Dictionary<string, ThingDef> FridgeDefs { get; set; }
+
+        private static readonly FieldInfo powerBaseConsumptionField = typeof(CompProperties_Power).GetField(
+            "basePowerConsumption",
+            BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
 
         static RimFridgeSettingsUtil()
         {
@@ -43,7 +48,15 @@ namespace RimFridge
             {
                 ThingDef def = FridgeDefs[basePower.Key];
                 CompProperties_Power power = def.GetCompProperties<CompProperties_Power>();
-                power.PowerConsumption = basePower.Value * newFactor;
+                float scaled = basePower.Value * newFactor;
+                if (powerBaseConsumptionField != null)
+                {
+                    powerBaseConsumptionField.SetValue(power, scaled);
+                }
+                else
+                {
+                    Log.Warning("RimFridge: could not set fridge power (basePowerConsumption field missing); power factor setting ignored.");
+                }
             }
         }
     }

@@ -23,9 +23,34 @@ namespace RimFridge
         }
     }
 
-    [HarmonyPatch(typeof(ReachabilityUtility), "CanReach")]
+    /// <summary>
+    /// Resolves <c>ReachabilityUtility.CanReach</c> via <c>TargetMethod</c> + parameter types so Harmony never uses a bare name-only lookup
+    /// (RimWorld 1.5+ has multiple <c>CanReach</c> overloads → ambiguous match).
+    /// </summary>
+    [HarmonyPatch]
     static class Patch_ReachabilityUtility_CanReach
     {
+        private static readonly Type[] CanReachSixArgTypes =
+        {
+            typeof(Pawn), typeof(LocalTargetInfo), typeof(PathEndMode), typeof(Danger), typeof(bool), typeof(TraverseMode)
+        };
+
+        private static MethodBase canReachTarget;
+
+        static bool Prepare()
+        {
+            canReachTarget = AccessTools.Method(typeof(ReachabilityUtility), "CanReach", CanReachSixArgTypes);
+            if (canReachTarget == null)
+            {
+                Log.Warning("RimFridge: ReachabilityUtility.CanReach(Pawn, LocalTargetInfo, PathEndMode, Danger, bool, TraverseMode) not found; skipping fridge reachability patch.");
+                return false;
+            }
+
+            return true;
+        }
+
+        static MethodBase TargetMethod() => canReachTarget;
+
         static bool Prefix(ref bool __result, Pawn pawn, LocalTargetInfo dest, PathEndMode peMode, Danger maxDanger, bool canBashDoors, TraverseMode mode)
         {
             try
@@ -149,9 +174,38 @@ namespace RimFridge
         }
     }
 
-    [HarmonyPatch(typeof(FoodUtility), "TryFindBestFoodSourceFor")]
+    /// <summary>
+    /// Vanilla renamed/moved this entry point across versions (<c>_NewTemp</c> vs not). Resolve explicitly so Harmony never patches a missing name.
+    /// </summary>
+    [HarmonyPatch]
     static class Patch_FoodUtility_TryFindBestFoodSourceFor
     {
+        private static MethodBase foodTryFindTarget;
+
+        private static readonly Type[] FoodTryFindParamTypes =
+        {
+            typeof(Pawn), typeof(Pawn), typeof(bool),
+            typeof(Thing).MakeByRefType(), typeof(ThingDef).MakeByRefType(),
+            typeof(bool), typeof(bool), typeof(bool), typeof(bool), typeof(bool), typeof(bool),
+            typeof(bool), typeof(bool), typeof(bool), typeof(bool),
+            typeof(FoodPreferability)
+        };
+
+        static bool Prepare()
+        {
+            foodTryFindTarget = AccessTools.Method(typeof(FoodUtility), "TryFindBestFoodSourceFor_NewTemp", FoodTryFindParamTypes)
+                ?? AccessTools.Method(typeof(FoodUtility), "TryFindBestFoodSourceFor", FoodTryFindParamTypes);
+            if (foodTryFindTarget == null)
+            {
+                Log.Warning("RimFridge: FoodUtility.TryFindBestFoodSourceFor (16-parameter) not found; prison fridge food patch disabled.");
+                return false;
+            }
+
+            return true;
+        }
+
+        static MethodBase TargetMethod() => foodTryFindTarget;
+
         static void Postfix(ref bool __result, Pawn getter, Pawn eater, bool desperate, ref Thing foodSource, ref ThingDef foodDef, bool canRefillDispenser, bool canUseInventory, bool canUsePackAnimalInventory, bool allowForbidden, bool allowCorpse, bool allowSociallyImproper, bool allowHarvest, bool forceScanWholeMap, bool ignoreReservations, bool calculateWantedStackCount, FoodPreferability minPrefOverride)
         {
             if (__result == false &&

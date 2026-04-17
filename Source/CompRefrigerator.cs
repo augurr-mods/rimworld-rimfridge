@@ -1,10 +1,10 @@
 ﻿using RimWorld;
 using System;
+using System.Collections.Generic;
 using System.Reflection;
 using System.Text;
 using UnityEngine;
 using Verse;
-using System.Collections.Generic;
 
 namespace RimFridge
 {
@@ -150,7 +150,7 @@ namespace RimFridge
             {
                 // When the RimFridge's compressor is working and it's pushing the internal temperature down, it can draw a lot of power!  
                 // Once it gets to temp, maintaining it isn't bad.
-                float change = Mathf.Max(desiredTemp - (currentTemp + changetemperature), -2f);
+                float change = Mathf.Max(desiredTemp - (currentTemp + changetemperature), -3f);
                 if (ShouldBeActive)  //Using this just in case someone wants to make a wood-burning RimFridge
                 {
                     changetemperature += change;
@@ -206,13 +206,6 @@ namespace RimFridge
             base.PostSpawnSetup(respawningAfterLoad);
 
             FridgeCache.AddFridge(this, this.parent?.Map);
-        }
-
-        public override void PostDeSpawn(Map map)
-        {
-            base.PostDeSpawn(map);
-
-            FridgeCache.RemoveFridge(this, map);
         }
 
         public override void PostExposeData()
