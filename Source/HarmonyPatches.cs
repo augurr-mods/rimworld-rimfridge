@@ -30,19 +30,19 @@ namespace RimFridge
     [HarmonyPatch]
     static class Patch_ReachabilityUtility_CanReach
     {
-        private static readonly Type[] CanReachSixArgTypes =
+        private static readonly Type[] CanReachSevenArgTypes =
         {
-            typeof(Pawn), typeof(LocalTargetInfo), typeof(PathEndMode), typeof(Danger), typeof(bool), typeof(TraverseMode)
+            typeof(Pawn), typeof(LocalTargetInfo), typeof(PathEndMode), typeof(Danger), typeof(bool), typeof(bool), typeof(TraverseMode)
         };
 
         private static MethodBase canReachTarget;
 
         static bool Prepare()
         {
-            canReachTarget = AccessTools.Method(typeof(ReachabilityUtility), "CanReach", CanReachSixArgTypes);
+            canReachTarget = AccessTools.Method(typeof(ReachabilityUtility), "CanReach", CanReachSevenArgTypes);
             if (canReachTarget == null)
             {
-                Log.Warning("RimFridge: ReachabilityUtility.CanReach(Pawn, LocalTargetInfo, PathEndMode, Danger, bool, TraverseMode) not found; skipping fridge reachability patch.");
+                Log.Warning("RimFridge: RimWorld 1.6 ReachabilityUtility.CanReach signature not found; skipping fridge reachability patch.");
                 return false;
             }
 
@@ -51,7 +51,7 @@ namespace RimFridge
 
         static MethodBase TargetMethod() => canReachTarget;
 
-        static bool Prefix(ref bool __result, Pawn pawn, LocalTargetInfo dest, PathEndMode peMode, Danger maxDanger, bool canBashDoors, TraverseMode mode)
+        static bool Prefix(ref bool __result, Pawn pawn, LocalTargetInfo dest, PathEndMode peMode, Danger maxDanger, bool canBashDoors, bool canBashFences, TraverseMode mode)
         {
             try
             {
@@ -62,7 +62,7 @@ namespace RimFridge
                         if (thing is RimFridge_Building)
                         {
                             peMode = PathEndMode.Touch;
-                            __result = pawn?.Spawned == true && pawn.Map?.reachability?.CanReach(pawn.Position, dest, peMode, TraverseParms.For(pawn, maxDanger, mode, canBashDoors)) == true;
+                            __result = pawn?.Spawned == true && pawn.Map?.reachability?.CanReach(pawn.Position, dest, peMode, TraverseParms.For(pawn, maxDanger, mode, canBashDoors, canBashFences: canBashFences)) == true;
                             return false;
                         }
                     }
@@ -187,7 +187,7 @@ namespace RimFridge
             typeof(Pawn), typeof(Pawn), typeof(bool),
             typeof(Thing).MakeByRefType(), typeof(ThingDef).MakeByRefType(),
             typeof(bool), typeof(bool), typeof(bool), typeof(bool), typeof(bool), typeof(bool),
-            typeof(bool), typeof(bool), typeof(bool), typeof(bool),
+            typeof(bool), typeof(bool), typeof(bool), typeof(bool), typeof(bool),
             typeof(FoodPreferability)
         };
 
@@ -197,7 +197,7 @@ namespace RimFridge
                 ?? AccessTools.Method(typeof(FoodUtility), "TryFindBestFoodSourceFor", FoodTryFindParamTypes);
             if (foodTryFindTarget == null)
             {
-                Log.Warning("RimFridge: FoodUtility.TryFindBestFoodSourceFor (16-parameter) not found; prison fridge food patch disabled.");
+                Log.Warning("RimFridge: FoodUtility.TryFindBestFoodSourceFor (17-parameter) not found; prison fridge food patch disabled.");
                 return false;
             }
 
@@ -206,7 +206,7 @@ namespace RimFridge
 
         static MethodBase TargetMethod() => foodTryFindTarget;
 
-        static void Postfix(ref bool __result, Pawn getter, Pawn eater, bool desperate, ref Thing foodSource, ref ThingDef foodDef, bool canRefillDispenser, bool canUseInventory, bool canUsePackAnimalInventory, bool allowForbidden, bool allowCorpse, bool allowSociallyImproper, bool allowHarvest, bool forceScanWholeMap, bool ignoreReservations, bool calculateWantedStackCount, FoodPreferability minPrefOverride)
+        static void Postfix(ref bool __result, Pawn getter, Pawn eater, bool desperate, ref Thing foodSource, ref ThingDef foodDef, bool canRefillDispenser, bool canUseInventory, bool canUsePackAnimalInventory, bool allowForbidden, bool allowCorpse, bool allowSociallyImproper, bool allowHarvest, bool forceScanWholeMap, bool ignoreReservations, bool calculateWantedStackCount, bool allowVenerated, FoodPreferability minPrefOverride)
         {
             if (__result == false &&
                 getter.Map != null &&
